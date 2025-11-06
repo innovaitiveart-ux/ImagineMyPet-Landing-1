@@ -23,25 +23,24 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
   const maxGenerations = 6;
   const [generationCount, setGenerationCount] = useState<number>(0);
 
- // ✅ Revised cookie helpers (Shopify-safe, survive refresh even in preview mode)
-function setCookie(name: string, value: string, days = 365) {
-  try {
-    const expires = new Date(Date.now() + days * 864e5).toUTCString();
-    document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=None; Secure`;
-  } catch (e) {
-    console.warn("Cookie set failed:", e);
+  // ✅ Revised cookie helpers (Shopify-safe, survive refresh even in preview mode)
+  function setCookie(name: string, value: string, days = 365) {
+    try {
+      const expires = new Date(Date.now() + days * 864e5).toUTCString();
+      document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=None; Secure`;
+    } catch (e) {
+      console.warn("Cookie set failed:", e);
+    }
   }
-}
 
-function getCookie(name: string) {
-  try {
-    const match = document.cookie.match(new RegExp("(^| )" + name + "=([^;]+)"));
-    return match ? decodeURIComponent(match[2]) : null;
-  } catch {
-    return null;
+  function getCookie(name: string) {
+    try {
+      const match = document.cookie.match(new RegExp("(^| )" + name + "=([^;]+)"));
+      return match ? decodeURIComponent(match[2]) : null;
+    } catch {
+      return null;
+    }
   }
-}
-
 
   // Load saved generation count + portraits
   useEffect(() => {
@@ -169,16 +168,26 @@ function getCookie(name: string) {
     else handleGenerateClick();
   };
 
+  // ✅ FIXED: Safe redirect for Shopify (no 414 URI Too Large)
   const openDigitalProductWithPortrait = () => {
     if (!generatedPortrait) return;
     const base = "https://imaginemypet.com/products/digital-pet-portrait-download";
     const url = new URL(base);
-    url.searchParams.set("note", `Chosen portrait: ${generatedPortrait}`);
+
+    // Only include the Cloudinary URL (not the giant base64 string)
+    if (generatedPortrait.startsWith("http")) {
+      url.searchParams.set("note", generatedPortrait);
+    } else {
+      url.searchParams.set("note", "Generated portrait available via app");
+    }
+
     url.searchParams.set("style", selectedStyle);
     if (petName) url.searchParams.set("petName", petName);
+
     try {
       localStorage.setItem("chosenPortraitUrl", generatedPortrait);
     } catch {}
+
     window.open(url.toString(), "_blank");
   };
 
