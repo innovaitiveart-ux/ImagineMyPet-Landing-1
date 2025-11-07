@@ -621,8 +621,8 @@ export const TESTIMONIALS: Testimonial[] = [
 export const USP_ITEMS: UspItem[] = [
     {
         icon: PaletteIcon,
-        title: "True Artistic Styles, Not Generic Filters",
-        description: "Our art styles are one-of-a-kind, created by artists exclusively for ImagineMyPet. This means your pet's portrait will look authentically artful and unique."
+        title: "Crafted Digital Styles, Never Copy-and-Paste",
+        description: "Unlike companies that drop your pet onto a stock scene or run quick filters, ImagineMyPet uses carefully developed digital designs to create portraits with genuine artistic character."
     },
     {
         icon: EyeIcon,
@@ -650,7 +650,7 @@ export const USP_ITEMS: UspItem[] = [
 export const FAQ_ITEMS: FaqItem[] = [
   {
     question: 'How does ImagineMyPet turn my photo into a portrait? Is this done by an artist or a filter?',
-    answer: "We use a proprietary digital art process that combines your photo with an artistic style. It's not a preset filter – it's more sophisticated, ensuring the result looks hand-crafted, because it's built from artistic principles and your pet's unique features."
+    answer: "Your portrait is generated using a detailed digital prompt that reimagines your pet’s photo in a selected artistic style. It’s not a preset filter—it’s a creative, prompt-based process built for artistic results."
   },
   {
     question: 'Will the portrait really look like my pet?',
@@ -662,10 +662,10 @@ export const FAQ_ITEMS: FaqItem[] = [
   },
   {
     question: 'What products can I order with my pet\'s portrait?',
-    answer: 'We offer both digital and physical products. You can get a high-resolution digital download, or have us print your portrait on a beautiful canvas, framed poster, sweatshirt, coffee mug, and more. You\'ll see all options after you click "Order".'
+    answer: 'Available as digital downloads or printed on framed posters, canvas, stickers, mugs, water bottles, tote bags, pillows, and t-shirts—with more options introduced as our collection grows.'
   },
   {
     question: 'How long does it take to get my order?',
-    answer: 'The digital file is available immediately after purchase. Physical products typically take 2-4 business days for production, plus 3-7 business days for shipping in the US. You\'ll get a tracking number via email.'
+    answer: 'The digital file is emailed to you within 24 hours -often much less- after purchase. Physical products typically take 2-4 business days for production, plus 3-7 business days for shipping in the US. You\'ll get a tracking number via email.'
   }
 ];

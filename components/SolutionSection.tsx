@@ -29,7 +29,7 @@ const SolutionSection: React.FC<SolutionSectionProps> = ({ onCtaClick }) => {
                 Simply upload a photo and choose a style. You'll see a preview on screen instantly. <b className="font-semibold">You see it before you buy it.</b>
             </Benefit>
             <Benefit title={<>Looks Like <span className="text-teal-600">Real Art</span>, Not a Filter</>} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>}>
-                Our portraits are created from original designs by real artists—resulting in imaginative, beautifully detailed artwork that feels truly one-of-a-kind.
+                Each portrait combines thoughtfully engineered design with creative digital artistry to produce imaginative, beautifully detailed artwork that’s unmistakably one-of-a-kind.
             </Benefit>
             <Benefit title={<>Your Art, <span className="text-teal-600">Your Way</span></>} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>}>
                 Love your portrait? Instantly download a high-resolution digital file, or have it printed on <b className="font-semibold">wall art, mugs, t-shirts, and more.</b>
