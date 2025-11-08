@@ -16,6 +16,10 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
   const [petGender, setPetGender] = useState<string>("Male");
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Shows “limit reached” only when the user tries to generate after hitting the cap
+  const [showLimitNotice, setShowLimitNotice] = useState<boolean>(false);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // ---- Generation limits ----
@@ -23,16 +27,16 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
   const maxGenerations = 6;
   const [generationCount, setGenerationCount] = useState<number>(0);
 
-  // ✅ Revised cookie helpers (Shopify-safe, survive refresh even in preview mode)
+  // Cookie helpers (persist across reloads)
   function setCookie(name: string, value: string, days = 365) {
     try {
       const expires = new Date(Date.now() + days * 864e5).toUTCString();
-      document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=None; Secure`;
+      // SameSite=Lax is fine for same-origin; Secure is okay if served over https
+      document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Lax`;
     } catch (e) {
       console.warn("Cookie set failed:", e);
     }
   }
-
   function getCookie(name: string) {
     try {
       const match = document.cookie.match(new RegExp("(^| )" + name + "=([^;]+)"));
@@ -88,6 +92,7 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
       setUploadedImage(file);
       setGeneratedPortrait(null);
       setError(null);
+      setShowLimitNotice(false);
       const reader = new FileReader();
       reader.onloadend = () => setUploadedImagePreview(reader.result as string);
       reader.readAsDataURL(file);
@@ -97,15 +102,19 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
   const handleGenerateClick = async () => {
     if (!uploadedImage) {
       setError("Please upload a photo first.");
+      setShowLimitNotice(false);
       return;
     }
     if (!isDevMode && generationCount >= maxGenerations) {
-      setError("You've reached your 6 free generations. Choose your favorite to continue.");
+      // Show the notice ONLY when they try to generate after hitting limit
+      setError("You’ve reached your 6 free generations.");
+      setShowLimitNotice(true);
       return;
     }
 
     setIsLoading(true);
     setError(null);
+    setShowLimitNotice(false);
     setGeneratedPortrait(null);
 
     try {
@@ -125,7 +134,6 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
         throw new Error("Selected art style has no prompt defined.");
       }
 
-      console.log("🟢 Prompt being sent to FAL:", prompt);
       const resultUrl = await generateWithFAL(prompt, base64Image);
 
       let imageData = resultUrl as any;
@@ -135,7 +143,7 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
         imageData = `data:image/jpeg;base64,${resultUrl.images[0].b64_json}`;
       }
 
-      console.log("🚀 Uploading to Cloudinary...");
+      // Upload to Cloudinary if we have base64
       let finalImageUrl = imageData as string;
       try {
         const base64Data = (imageData as string).includes(",")
@@ -143,11 +151,10 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
           : undefined;
         if (base64Data) {
           const cloudinaryUrl = await uploadToCloudinary(base64Data);
-          console.log("☁️ Cloudinary upload successful:", cloudinaryUrl);
           finalImageUrl = cloudinaryUrl;
         }
       } catch (uploadErr) {
-        console.warn("⚠️ Cloudinary upload failed, using generated image instead:", uploadErr);
+        console.warn("Cloudinary upload failed, using generated image instead:", uploadErr);
       }
 
       setGeneratedPortrait(finalImageUrl);
@@ -155,7 +162,7 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
       setSavedPortraits(updated);
       if (!isDevMode) setGenerationCount((prev) => prev + 1);
     } catch (err: any) {
-      console.error("❌ Error during generation:", err);
+      console.error("Error during generation:", err);
       setError(err.message || "An unexpected error occurred.");
     } finally {
       setIsLoading(false);
@@ -168,19 +175,19 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
     else handleGenerateClick();
   };
 
-  // ✅ FIXED: Safe redirect for Shopify (no 414 URI Too Large)
+  // Safe redirect for Shopify (no 414 URI Too Large)
   const openDigitalProductWithPortrait = () => {
     if (!generatedPortrait) return;
     const base = "https://imaginemypet.com/products/digital-pet-portrait-download";
     const url = new URL(base);
 
-    // Only include the Cloudinary URL (not the giant base64 string)
+    // Only include a normal URL in the note (never the big data: URL)
     if (generatedPortrait.startsWith("http")) {
+      // Keep note concise to avoid long URLs
       url.searchParams.set("note", generatedPortrait);
     } else {
       url.searchParams.set("note", "Generated portrait available via app");
     }
-
     url.searchParams.set("style", selectedStyle);
     if (petName) url.searchParams.set("petName", petName);
 
@@ -201,10 +208,10 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
         {/* Header */}
         <div className="text-center mb-12">
           <h1 className="text-4xl md:text-6xl font-bold text-stone-900 leading-tight">
-            Turn Your Pet's Photo Into a <span className="text-teal-600">Lifelike Portrait</span> – Instantly
+            Turn Your Pet&apos;s Photo Into a <span className="text-teal-600">Lifelike Portrait</span> – Instantly
           </h1>
           <p className="mt-4 max-w-3xl mx-auto text-lg text-stone-600">
-            Upload your pet's photo, choose an exclusive art style, and see a stunning preview in seconds.
+            Upload your pet&apos;s photo, choose an exclusive art style, and see a stunning preview in seconds.
           </p>
         </div>
 
@@ -226,41 +233,61 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
 
           {/* Generated */}
           <div className="relative w-full aspect-square bg-white rounded-2xl shadow-lg flex flex-col items-center justify-start p-4">
-            <div className="relative w-full flex-1 flex items-center justify-center">
+            <div className="relative w-full flex-1 flex items-center justify-center overflow-hidden rounded-lg">
+              {/* Loading overlay */}
               {isLoading && (
-                <div className="absolute inset-0 bg-white/80 flex flex-col items-center justify-center rounded-2xl z-10">
+                <div className="absolute inset-0 bg-white/80 flex flex-col items-center justify-center rounded-2xl z-20">
                   <div className="w-16 h-16 border-4 border-teal-500 border-dashed rounded-full animate-spin"></div>
                   <p className="mt-4 text-stone-700 font-semibold">Creating your masterpiece...</p>
                 </div>
               )}
-              {error && (
-                <div className="absolute inset-0 bg-red-50 flex flex-col items-center justify-center text-center p-4 rounded-2xl z-10">
-                  <p className="text-red-600 font-semibold">Oops!</p>
-                  <p className="text-red-500 mt-2">{error}</p>
-                </div>
-              )}
+
+              {/* Image or placeholder */}
               {generatedPortrait ? (
-                <div className="relative w-full h-full flex items-center justify-center overflow-hidden rounded-lg">
-                  <img src={generatedPortrait} alt="Generated Pet Portrait" className="max-w-full max-h-full object-contain rounded-lg" />
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <span
-                      className="text-white font-extrabold opacity-25 select-none"
-                      style={{
-                        fontSize: "clamp(1rem, 5vw, 3rem)",
-                        transform: "rotate(-25deg)",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      ImagineMyPet.com
-                    </span>
-                  </div>
-                </div>
+                <img
+                  src={generatedPortrait}
+                  alt="Generated Pet Portrait"
+                  className="max-w-full max-h-full object-contain rounded-lg"
+                />
               ) : (
-                <div className="text-center text-stone-400">
+                <div className="text-center text-stone-400 w-full h-full flex items-center justify-center">
                   <img src="/images/placeholder-art.png" alt="Placeholder Art" className="opacity-30 rounded-lg" />
                   <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-xl font-semibold text-black drop-shadow-md">
                     Your Portrait Here
                   </span>
+                </div>
+              )}
+
+              {/* High-contrast watermark (visible on light or dark images) */}
+              {generatedPortrait && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10 overflow-hidden">
+  <span
+    className="font-extrabold select-none"
+    style={{
+      fontSize: "clamp(0.8rem, 3vw, 2rem)",
+      transform: "rotate(-25deg)",
+      whiteSpace: "nowrap",
+      opacity: 0.25,
+      color: "white",
+      textShadow:
+        "0 0 2px rgba(0,0,0,0.8), 0 0 6px rgba(0,0,0,0.4)",
+      WebkitTextStroke: "0.5px rgba(0,0,0,0.5)",
+      mixBlendMode: "soft-light",
+      maxWidth: "90%",
+    }}
+  >
+    ImagineMyPet.com
+  </span>
+</div>
+
+              )}
+
+              {/* Limit notice ONLY when user tried to exceed limit (never blocks thumbnails) */}
+              {showLimitNotice && !isLoading && (
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30">
+                  <div className="bg-red-50/95 border border-red-200 text-red-700 rounded-xl px-4 py-2 shadow-md">
+                    <strong>Heads up:</strong> You’ve reached your 6 free generations. Select a saved portrait below or proceed to download/print.
+                  </div>
                 </div>
               )}
             </div>
@@ -276,7 +303,12 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
                     className={`w-16 h-16 rounded-lg cursor-pointer border-2 ${
                       generatedPortrait === url ? "border-teal-600" : "border-transparent"
                     }`}
-                    onClick={() => setGeneratedPortrait(url)}
+                    onClick={() => {
+                      setGeneratedPortrait(url);
+                      // Hide limit notice when browsing old ones
+                      setShowLimitNotice(false);
+                      setError(null);
+                    }}
                   />
                 ))}
               </div>
@@ -351,7 +383,7 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center mb-6">
             <div>
               <label htmlFor="petName" className="block text-sm font-medium text-stone-700 mb-2">
-                1. Pet's Name
+                1. Pet&apos;s Name
               </label>
               <input
                 type="text"
@@ -365,7 +397,7 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
 
             <div>
               <label htmlFor="petGender" className="block text-sm font-medium text-stone-700 mb-2">
-                2. Pet's Gender
+                2. Pet&apos;s Gender
               </label>
               <select
                 id="petGender"
