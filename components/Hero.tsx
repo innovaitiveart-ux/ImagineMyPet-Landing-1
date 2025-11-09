@@ -229,7 +229,7 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
     }
     
     // Product Variant ID for the digital download
-    const DIGITAL_PRODUCT_VARIANT_ID = 8514736554072; 
+    const DIGITAL_PRODUCT_VARIANT_ID = 43343579316312; 
     
     // Construct the custom note data (as a JSON string)
     const styleName = ART_STYLES.find(s => s.id === (activeStyleId || selectedStyle))?.name || 'Unknown Style';
