@@ -219,79 +219,61 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
 
 
   // ** CRITICAL FIX: Reverting to Form Submission to bypass strict Shopify AJAX/CORS rules **
-  const openDigitalProductWithPortrait = () => {
-    const SHOPIFY_DOMAIN = 'https://www.imaginemypet.com'; 
-    
-    if (!generatedPortrait) {
-        console.error("Cannot proceed: No generated portrait available.");
-        alert("Error: Could not start the download process. Please try again or contact support.");
-        return;
-    }
-    
-    // Product Variant ID for the digital download
-    const DIGITAL_PRODUCT_VARIANT_ID = 43343579316312; 
-    
-    // Construct the custom note data (as a JSON string)
-    const styleName = ART_STYLES.find(s => s.id === (activeStyleId || selectedStyle))?.name || 'Unknown Style';
-    const noteData = {
-        image_url: generatedPortrait,
-        style_id: activeStyleId || selectedStyle,
-        style_name: styleName,
-        pet_name: petName || 'N/A',
-        pet_gender: petGender,
-        source: 'imagine_my_pet_app',
-    };
-    const stringifiedNote = JSON.stringify(noteData);
+  // Helper function for hidden inputs
+const createInput = (name: string, value: string | number) => {
+  const input = document.createElement('input');
+  input.type = 'hidden';
+  input.name = name;
+  input.value = String(value);
+  return input;
+};
 
-    // 1. Create a dynamic form element
-    const form = document.createElement('form');
-    // Action must point to the Shopify add-to-cart endpoint on the main domain
-    form.action = `${SHOPIFY_DOMAIN}/pages/cart-bridge`;
+// ✅ Definitive one-step Shopify POST (Gemini’s fix)
+const openDigitalProductWithPortrait = () => {
+  const SHOPIFY_DOMAIN = 'https://www.imaginemypet.com';
+  const DIGITAL_PRODUCT_VARIANT_ID = 43343579316312; // confirmed variant
 
-    form.method = 'POST';
-    // Essential for cross-origin form submission (ensures cookies are sent, though less critical than for AJAX)
-    form.target = '_self'; 
-    form.style.display = 'none';
+  if (!generatedPortrait) {
+    console.error('Cannot proceed: No generated portrait available.');
+    return;
+  }
 
-    // Helper function to create hidden input fields
-    const createInput = (name: string, value: string | number) => {
-        const input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = name;
-        input.value = String(value);
-        return input;
-    };
+  const styleName =
+    ART_STYLES.find(s => s.id === (activeStyleId || selectedStyle))?.name || 'Unknown Style';
 
-    // 2. Add item details
-    // The main variant ID for the digital product
-    form.appendChild(createInput('id', DIGITAL_PRODUCT_VARIANT_ID));
-    form.appendChild(createInput('quantity', 1));
-
-    // 3. Add Line Item Properties (using properties[key] syntax)
-    form.appendChild(createInput('properties[Art Style]', styleName));
-    form.appendChild(createInput('properties[Pet Name]', petName || 'N/A'));
-    form.appendChild(createInput('properties[Image Source]', 'Link saved in cart note for fulfillment'));
-
-    // 4. Add the Cart Note
-    form.appendChild(createInput('note', stringifiedNote));
-
-    // 5. Replace relative redirect with absolute bridge URL on main domain
-    form.appendChild(createInput('return_to', 'https://www.imaginemypet.com/checkout'));
-
-
-    // 6. Append the form to the document, submit it, and remove it
-    document.body.appendChild(form);
-    form.submit();
-    document.body.removeChild(form);
-
-    // IMPORTANT: The browser will automatically clear any previous cart items based on the Shopify theme's settings
-    // when a standard form submission hits /cart/add. This pattern is far more reliable than the AJAX /cart/clear.js.
+  const payloadObject = {
+    image_url: generatedPortrait,
+    style_id: activeStyleId || selectedStyle,
+    style_name: styleName,
+    pet_name: petName || 'N/A',
+    pet_gender: petGender,
+    source: 'imagine_my_pet_app',
   };
-  
-  // FIX: Safe redirect for Shopify (original logic was flawed, using URL search params which can exceed limits)
-  // The original function tried to use search params, which is bad practice for large data.
-  // The correct pattern is to use the Shopify AJAX API to add the item and set the cart note, then redirect to checkout.
-  // Renamed the old logic to openDigitalProductWithPortraitLegacy for reference.
+
+  const stringifiedPayload = JSON.stringify(payloadObject);
+
+  const form = document.createElement('form');
+  form.action = `${SHOPIFY_DOMAIN}/cart/add`;
+  form.method = 'POST';
+  form.target = '_self';
+  form.style.display = 'none';
+
+  form.appendChild(createInput('id', DIGITAL_PRODUCT_VARIANT_ID));
+  form.appendChild(createInput('quantity', 1));
+
+  // add item properties
+  form.appendChild(createInput('properties[Art Style]', styleName));
+  form.appendChild(createInput('properties[Pet Name]', petName || 'N/A'));
+  form.appendChild(createInput('properties[_FulfillmentData]', stringifiedPayload));
+
+  // redirect to checkout using absolute URL
+  form.appendChild(createInput('return_to', `${SHOPIFY_DOMAIN}/checkout`));
+
+  document.body.appendChild(form);
+  form.submit();
+  document.body.removeChild(form);
+};
+
   const openDigitalProductWithPortraitLegacy = () => {
     if (!generatedPortrait) return;
     const base = "https://imaginemypet.com/products/digital-pet-portrait-download";
