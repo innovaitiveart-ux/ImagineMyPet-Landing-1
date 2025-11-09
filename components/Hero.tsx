@@ -321,7 +321,11 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
           <div className="mt-10 text-center max-w-3xl mx-auto p-6 bg-teal-50/50 rounded-2xl">
             <h3 className="text-2xl font-bold text-stone-800">Your Portrait Is Ready!</h3>
             <p className="mt-2 text-stone-600">
-              You can download your high-resolution digital copy or print it on premium products.
+              <p className="mt-2 text-stone-600">
+                You can download your high-resolution digital copy or print it on premium products.{" "}
+                Your final purchased portrait will be delivered <span className="font-semibold text-teal-600">completely watermark-free</span> in full high-resolution quality.
+</p>
+
             </p>
 
             <div className="flex flex-col sm:flex-row justify-center gap-6 mt-6">
