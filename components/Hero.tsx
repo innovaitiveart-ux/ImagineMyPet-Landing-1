@@ -275,10 +275,8 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
     form.appendChild(createInput('note', stringifiedNote));
 
     // 5. Replace relative redirect with absolute bridge URL on main domain
-form.appendChild(createInput(
-  'return_to',
-  'https://www.imaginemypet.com/pages/cart-bridge?note=' + encodeURIComponent(stringifiedNote) + '&goto=/checkout'
-));
+    form.appendChild(createInput('return_to', 'https://www.imaginemypet.com/checkout'));
+
 
     // 6. Append the form to the document, submit it, and remove it
     document.body.appendChild(form);
