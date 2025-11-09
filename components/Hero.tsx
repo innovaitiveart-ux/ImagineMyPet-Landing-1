@@ -401,7 +401,7 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
               <div className="flex-1 text-center">
                 <button
                   onClick={() => {
-                    // NEW CODE: Use activeStyleId (from thumbnail) or fallback to selectedStyle (from dropdown)
+                    // NEW CODE: Use activeStyleId (from thumbnail) or fallback to selectedStyle (from dropdown) whatev
                     // The style ID is converted to lowercase for lookup against the URL map keys.
                     const effectiveStyle = activeStyleId || selectedStyle; 
                     
