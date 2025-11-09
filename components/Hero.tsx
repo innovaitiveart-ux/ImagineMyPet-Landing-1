@@ -221,8 +221,6 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
   // FIX & UPDATE: Implement full Shopify cart update logic for download product
   const openDigitalProductWithPortrait = async () => {
     // FIX 1: Define the base URL for the Shopify store to enable CORS-compliant AJAX calls.
-    // This resolves the cross-origin error when the app is hosted on a different domain/subdomain
-    // (e.g., create.imaginemypet.com calling imaginemypet.com).
     const SHOPIFY_DOMAIN = 'https://imaginemypet.com'; 
 
     if (!generatedPortrait) {
@@ -234,9 +232,9 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
     // The Product Variant ID for the digital download must be hardcoded here. 
     const DIGITAL_PRODUCT_VARIANT_ID = 44525048496436; 
     
-    // Construct the custom note for the cart
+    // Construct the custom note data (as a JSON object)
     const styleName = ART_STYLES.find(s => s.id === (activeStyleId || selectedStyle))?.name || 'Unknown Style';
-    const note = {
+    const noteData = {
         image_url: generatedPortrait,
         style_id: activeStyleId || selectedStyle,
         style_name: styleName,
@@ -244,43 +242,40 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
         pet_gender: petGender,
         source: 'imagine_my_pet_app',
     };
+    // The note must be stringified once more for the cart API
+    const stringifiedNote = JSON.stringify(noteData);
 
     try {
-        // FIX 2: Added credentials: 'include' to all cross-origin fetch calls.
-        // This is ESSENTIAL for the browser to send the Shopify session cookies 
-        // (which contain the cart context) when making requests from 
-        // create.imaginemypet.com to imaginemypet.com.
+        // FIX 2 & 3: Switched all cart POST requests to use URLSearchParams/application/x-www-form-urlencoded.
+        // This is the most compatible format for Shopify's legacy AJAX endpoints, which often reject
+        // cross-origin POST requests using application/json, even with credentials: 'include'.
 
-        // 1. Clear the cart first (using full domain)
+        // 1. Clear the cart first
         const clearResponse = await fetch(`${SHOPIFY_DOMAIN}/cart/clear.js`, { 
             method: 'POST',
-            credentials: 'include' // <-- Fix 2 Applied
+            credentials: 'include' 
         });
         if (!clearResponse.ok) {
+             // Non-critical, proceed if warning occurs
              console.warn("Cart clear may have failed, proceeding anyway.");
         }
 
 
-        // 2. Add the digital product to the cart (using full domain)
+        // 2. Add the digital product to the cart 
+        const addBody = new URLSearchParams();
+        addBody.append('id', DIGITAL_PRODUCT_VARIANT_ID.toString());
+        addBody.append('quantity', '1');
+        
+        // Line Item Properties are added using the properties[key] format
+        addBody.append('properties[Art Style]', styleName);
+        addBody.append('properties[Pet Name]', petName || 'N/A');
+        addBody.append('properties[Image Source]', 'Link saved in cart note for fulfillment');
+
         const addItemResponse = await fetch(`${SHOPIFY_DOMAIN}/cart/add.js`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include', // <-- Fix 2 Applied
-            body: JSON.stringify({
-                items: [
-                    {
-                        id: DIGITAL_PRODUCT_VARIANT_ID,
-                        quantity: 1,
-                        properties: {
-                            // Pass the essential properties as line item properties
-                            'Art Style': styleName,
-                            'Pet Name': petName || 'N/A',
-                            // Keep the final image URL hidden in the cart note, but use a friendly message for the property
-                            'Image Source': 'Link saved in cart note for fulfillment',
-                        }
-                    }
-                ]
-            })
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, // <-- Essential Fix 3
+            credentials: 'include', // <-- Essential Fix 2
+            body: addBody.toString()
         });
 
         if (!addItemResponse.ok) {
@@ -288,14 +283,15 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
             throw new Error(`Failed to add digital product to cart: ${addItemResponse.status} - ${errorText}`);
         }
 
-        // 3. Update the cart note with the full JSON object (using full domain)
+        // 3. Update the cart note with the full JSON object
+        const noteBody = new URLSearchParams();
+        noteBody.append('note', stringifiedNote); // Send the stringified JSON as the note value
+
         const updateNoteResponse = await fetch(`${SHOPIFY_DOMAIN}/cart/update.js`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include', // <-- Fix 2 Applied
-            body: JSON.stringify({
-                note: JSON.stringify(note) // Stringify the JSON object for the cart note
-            })
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, // <-- Essential Fix 3
+            credentials: 'include', // <-- Essential Fix 2
+            body: noteBody.toString()
         });
         
         if (!updateNoteResponse.ok) {
