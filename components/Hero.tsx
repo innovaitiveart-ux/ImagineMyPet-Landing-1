@@ -1,7 +1,13 @@
-import React, { useState, useRef, forwardRef, useImperativeHandle, useEffect } from "react";
+﻿import React, { useState, useRef, forwardRef, useImperativeHandle, useEffect } from "react";
 import { ART_STYLES } from "../constants";
 import { generateWithFAL } from "../services/geminiService.js";
 import { uploadToCloudinary } from "../services/cloudinaryService";
+
+// NEW CODE: New Type Definition for Saved Portraits
+type SavedPortrait = {
+  url: string;
+  styleId: string;
+};
 
 const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
   const internalRef = useRef<HTMLDivElement>(null);
@@ -10,7 +16,13 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
   const [uploadedImage, setUploadedImage] = useState<File | null>(null);
   const [uploadedImagePreview, setUploadedImagePreview] = useState<string | null>(null);
   const [generatedPortrait, setGeneratedPortrait] = useState<string | null>(null);
-  const [savedPortraits, setSavedPortraits] = useState<string[]>([]);
+
+  // UPDATED: savedPortraits state now stores objects
+  const [savedPortraits, setSavedPortraits] = useState<SavedPortrait[]>([]);
+  
+  // NEW CODE: Tracks the style of the image currently shown in the main window
+  const [activeStyleId, setActiveStyleId] = useState<string>(ART_STYLES[0].id);
+
   const [selectedStyle, setSelectedStyle] = useState<string>(ART_STYLES[0].id);
   const [petName, setPetName] = useState<string>("");
   const [petGender, setPetGender] = useState<string>("Male");
@@ -54,8 +66,26 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
         const storedCount = cookieCount || localStorage.getItem("generationCount");
         if (storedCount) setGenerationCount(parseInt(storedCount, 10));
 
+        // UPDATED: Must handle object array format now
         const saved = localStorage.getItem("savedPortraits");
-        if (saved) setSavedPortraits(JSON.parse(saved));
+        if (saved) {
+          let parsed = JSON.parse(saved);
+          
+          // Simple check for old string[] format, convert to new SavedPortrait format for safety
+          if (Array.isArray(parsed) && parsed.length > 0 && typeof parsed[0] === 'string') {
+              // Assuming old format was generated with the *first* style, but it's okay for display
+              // This logic mostly exists for non-destructive local storage migration
+              parsed = parsed.map((url: string) => ({ url, styleId: ART_STYLES[0].id }));
+          }
+          
+          setSavedPortraits(parsed);
+          
+          // NEW CODE: Set active style to the latest generated one
+          if (parsed.length > 0) {
+            setGeneratedPortrait(parsed[parsed.length - 1].url);
+            setActiveStyleId(parsed[parsed.length - 1].styleId);
+          }
+        }
       } catch (e) {
         console.warn("Failed to load saved generation data", e);
       }
@@ -67,6 +97,7 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
     if (!isDevMode) {
       try {
         localStorage.setItem("generationCount", generationCount.toString());
+        // UPDATED: Save the new object array format
         localStorage.setItem("savedPortraits", JSON.stringify(savedPortraits));
         setCookie("generationCount", generationCount.toString(), 365);
       } catch (e) {
@@ -158,8 +189,19 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
       }
 
       setGeneratedPortrait(finalImageUrl);
-      const updated = [...savedPortraits, finalImageUrl].slice(-6);
+      
+      // UPDATED: Save the full object with styleId
+      const newPortrait: SavedPortrait = {
+        url: finalImageUrl,
+        styleId: selectedStyle, // Use the style from the dropdown for the NEW image
+      };
+      
+      const updated = [...savedPortraits, newPortrait].slice(-6);
       setSavedPortraits(updated);
+      
+      // NEW CODE: Set the active style to the one just generated
+      setActiveStyleId(selectedStyle);
+
       if (!isDevMode) setGenerationCount((prev) => prev + 1);
     } catch (err: any) {
       console.error("Error during generation:", err);
@@ -188,7 +230,10 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
     } else {
       url.searchParams.set("note", "Generated portrait available via app");
     }
-    url.searchParams.set("style", selectedStyle);
+    // UPDATED: The download link should also use the active style ID for consistency
+    const styleToPass = activeStyleId || selectedStyle; 
+    url.searchParams.set("style", styleToPass);
+    
     if (petName) url.searchParams.set("petName", petName);
 
     try {
@@ -225,7 +270,7 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
               <div className="text-center text-stone-400">
                 <img src="/images/placeholder-pet.jpg" alt="Placeholder Pet" className="opacity-30 rounded-lg" />
                 <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-xl font-semibold text-black drop-shadow-md">
-                  Your Photo Here
+                    Your Photo Here
                 </span>
               </div>
             )}
@@ -295,16 +340,17 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
             {/* Thumbnails */}
             {savedPortraits.length > 0 && (
               <div className="mt-4 flex flex-wrap justify-center gap-2">
-                {savedPortraits.map((url, idx) => (
+                {savedPortraits.map((item, idx) => ( // UPDATED: Change 'url' to 'item' to access styleId
                   <img
                     key={idx}
-                    src={url}
+                    src={item.url} // UPDATED: Use item.url
                     alt={`Saved portrait ${idx + 1}`}
                     className={`w-16 h-16 rounded-lg cursor-pointer border-2 ${
-                      generatedPortrait === url ? "border-teal-600" : "border-transparent"
+                      generatedPortrait === item.url ? "border-teal-600" : "border-transparent"
                     }`}
                     onClick={() => {
-                      setGeneratedPortrait(url);
+                      setGeneratedPortrait(item.url);
+                      setActiveStyleId(item.styleId); // FIX: Sets the style to the thumbnail's style
                       setError(null)
                       // Hide limit notice when browsing old ones
                       setShowLimitNotice(false);
@@ -355,15 +401,23 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
               <div className="flex-1 text-center">
                 <button
                   onClick={() => {
+                    // NEW CODE: Use activeStyleId (from thumbnail) or fallback to selectedStyle (from dropdown)
+                    // The style ID is converted to lowercase for lookup against the URL map keys.
+                    const effectiveStyle = activeStyleId || selectedStyle; 
+                    
+                    // UPDATED: Corrected styleLinks with keys matching your established lowercase/hyphenated IDs
                     const styleLinks: Record<string, string> = {
-                      "royal": "https://imaginemypet.com/collections/custom-royal-pet-portrait",
+                      "royalty": "https://imaginemypet.com/collections/custom-royal-pet-portrait",
                       "watercolor": "https://imaginemypet.com/collections/watercolor-1",
+                      // Using the hyphenated URL slug key which is common for "Stained Glass" ID
                       "stained-glass": "https://imaginemypet.com/collections/stained-glass",
                       "jedi-warrior": "https://imaginemypet.com/collections/jedi-warrior",
-                      "ghibli": "https://imaginemypet.com/collections/whimsical-ghibli-inspired-portrait",
+                      "ghibli-inspired": "https://imaginemypet.com/collections/whimsical-ghibli-inspired-portrait", 
                     };
 
-                    const redirectUrl = styleLinks[selectedStyle.toLowerCase()] || "https://imaginemypet.com/collections";
+                    // UPDATED: Use the effective style ID (lower-cased, replacing space with hyphen for map lookup)
+                    let styleKey = effectiveStyle.toLowerCase().replace(/ /g, '-');
+                    const redirectUrl = styleLinks[styleKey] || "https://imaginemypet.com/collections";
                     window.open(redirectUrl, "_blank");
                   }}
 
