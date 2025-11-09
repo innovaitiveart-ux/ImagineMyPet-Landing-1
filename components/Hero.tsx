@@ -220,7 +220,6 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
 
   // FIX & UPDATE: Implement full Shopify cart update logic for download product
   const openDigitalProductWithPortrait = async () => {
-    // FIX 1: Define the base URL for the Shopify store to enable CORS-compliant AJAX calls.
     const SHOPIFY_DOMAIN = 'https://imaginemypet.com'; 
 
     if (!generatedPortrait) {
@@ -232,7 +231,6 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
     // The Product Variant ID for the digital download must be hardcoded here. 
     const DIGITAL_PRODUCT_VARIANT_ID = 44525048496436; 
     
-    // Construct the custom note data (as a JSON object)
     const styleName = ART_STYLES.find(s => s.id === (activeStyleId || selectedStyle))?.name || 'Unknown Style';
     const noteData = {
         image_url: generatedPortrait,
@@ -242,21 +240,24 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
         pet_gender: petGender,
         source: 'imagine_my_pet_app',
     };
-    // The note must be stringified once more for the cart API
     const stringifiedNote = JSON.stringify(noteData);
 
-    try {
-        // FIX 2 & 3: Switched all cart POST requests to use URLSearchParams/application/x-www-form-urlencoded.
-        // This is the most compatible format for Shopify's legacy AJAX endpoints, which often reject
-        // cross-origin POST requests using application/json, even with credentials: 'include'.
+    // Standard headers for cart modification (x-www-form-urlencoded format)
+    const standardHeaders = {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        // FIX: The critical header for cross-origin AJAX compatibility with Shopify
+        'X-Requested-With': 'XMLHttpRequest' 
+    };
 
-        // 1. Clear the cart first
+    try {
+        // 1. Clear the cart first 
         const clearResponse = await fetch(`${SHOPIFY_DOMAIN}/cart/clear.js`, { 
             method: 'POST',
-            credentials: 'include' 
+            credentials: 'include',
+            // It's safest to include the X-Requested-With header here too
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
         });
         if (!clearResponse.ok) {
-             // Non-critical, proceed if warning occurs
              console.warn("Cart clear may have failed, proceeding anyway.");
         }
 
@@ -266,15 +267,15 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
         addBody.append('id', DIGITAL_PRODUCT_VARIANT_ID.toString());
         addBody.append('quantity', '1');
         
-        // Line Item Properties are added using the properties[key] format
+        // Line Item Properties 
         addBody.append('properties[Art Style]', styleName);
         addBody.append('properties[Pet Name]', petName || 'N/A');
         addBody.append('properties[Image Source]', 'Link saved in cart note for fulfillment');
 
         const addItemResponse = await fetch(`${SHOPIFY_DOMAIN}/cart/add.js`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, // <-- Essential Fix 3
-            credentials: 'include', // <-- Essential Fix 2
+            headers: standardHeaders, // Includes Content-Type and X-Requested-With
+            credentials: 'include',
             body: addBody.toString()
         });
 
@@ -285,12 +286,12 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
 
         // 3. Update the cart note with the full JSON object
         const noteBody = new URLSearchParams();
-        noteBody.append('note', stringifiedNote); // Send the stringified JSON as the note value
+        noteBody.append('note', stringifiedNote);
 
         const updateNoteResponse = await fetch(`${SHOPIFY_DOMAIN}/cart/update.js`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, // <-- Essential Fix 3
-            credentials: 'include', // <-- Essential Fix 2
+            headers: standardHeaders, // Includes Content-Type and X-Requested-With
+            credentials: 'include',
             body: noteBody.toString()
         });
         
@@ -303,9 +304,7 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
         window.location.href = `${SHOPIFY_DOMAIN}/checkout`;
 
     } catch (error) {
-        // Log the detailed error for debugging
         console.error("🚨 Shopify Checkout Process Error:", error);
-        // Show a simple error to the user
         alert("Error: Could not start the download process. Please try again or contact support.");
     }
 };
@@ -475,8 +474,7 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
               {/* LEFT: Download */}
               <div className="flex-1 text-center">
                 <button
-                  // FIX: Removed e.stopPropagation() and the unnecessary return for the click to execute
-                  // FIX: Now calls the CORS-compliant function
+                  // FIX: Now calls the fully compliant CORS function
                   onClick={openDigitalProductWithPortrait}
                   className="w-full text-white font-bold py-4 px-8 rounded-lg text-lg
                     bg-gradient-to-r from-[#00c853] to-[#00bfa5]
@@ -495,21 +493,16 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
               <div className="flex-1 text-center">
                 <button
                   onClick={() => {
-                    // NEW CODE: Use activeStyleId (from thumbnail) or fallback to selectedStyle (from dropdown) whatev
-                    // The style ID is converted to lowercase for lookup against the URL map keys.
                     const effectiveStyle = activeStyleId || selectedStyle;
 
-                    // UPDATED: Corrected styleLinks with keys matching your established lowercase/hyphenated IDs
                     const styleLinks: Record<string, string> = {
                       "royalty": "https://imaginemypet.com/collections/custom-royal-pet-portrait",
                       "watercolor": "https://imaginemypet.com/collections/watercolor-1",
-                      // Using the hyphenated URL slug key which is common for "Stained Glass" ID
                       "stained-glass": "https://imaginemypet.com/collections/stained-glass",
                       "jedi-warrior": "https://imaginemypet.com/collections/jedi-warrior",
                       "ghibli-inspired": "https://imaginemypet.com/collections/whimsical-ghibli-inspired-portrait",
                     };
 
-                    // UPDATED: Use the effective style ID (lower-cased, replacing space with hyphen for map lookup)
                     let styleKey = effectiveStyle.toLowerCase().replace(/ /g, '-');
                     const redirectUrl = styleLinks[styleKey] || "https://imaginemypet.com/collections";
                     window.open(redirectUrl, "_blank");
