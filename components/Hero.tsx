@@ -246,7 +246,8 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
     // 1. Create a dynamic form element
     const form = document.createElement('form');
     // Action must point to the Shopify add-to-cart endpoint on the main domain
-    form.action = `${SHOPIFY_DOMAIN}/cart/add`;
+    form.action = `${SHOPIFY_DOMAIN}/pages/cart-bridge`;
+
     form.method = 'POST';
     // Essential for cross-origin form submission (ensures cookies are sent, though less critical than for AJAX)
     form.target = '_self'; 
