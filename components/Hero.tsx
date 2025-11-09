@@ -305,6 +305,7 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
                     }`}
                     onClick={() => {
                       setGeneratedPortrait(url);
+                      setError(null)
                       // Hide limit notice when browsing old ones
                       setShowLimitNotice(false);
                       setError(null);
@@ -355,15 +356,17 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
                 <button
                   onClick={() => {
                     const styleLinks: Record<string, string> = {
-                      Royalty: "https://imaginemypet.com/collections/custom-royal-pet-portrait",
-                      Watercolor: "https://imaginemypet.com/collections/watercolor-1",
-                      "Stained Glass": "https://imaginemypet.com/collections/stained-glass",
+                      "royal": "https://imaginemypet.com/collections/custom-royal-pet-portrait",
+                      "watercolor": "https://imaginemypet.com/collections/watercolor-1",
+                      "stained-glass": "https://imaginemypet.com/collections/stained-glass",
                       "jedi-warrior": "https://imaginemypet.com/collections/jedi-warrior",
-                      "Ghibli-inspired": "https://imaginemypet.com/collections/whimsical-ghibli-inspired-portrait",
+                      "ghibli": "https://imaginemypet.com/collections/whimsical-ghibli-inspired-portrait",
                     };
-                    const redirectUrl = styleLinks[selectedStyle] || "https://imaginemypet.com/collections";
+
+                    const redirectUrl = styleLinks[selectedStyle.toLowerCase()] || "https://imaginemypet.com/collections";
                     window.open(redirectUrl, "_blank");
                   }}
+
                   className="w-full text-white font-bold py-4 px-8 rounded-lg text-lg
                     bg-gradient-to-r from-[#00c853] to-[#00bfa5]
                     shadow-[0_6px_15px_rgba(0,191,165,0.3)]
