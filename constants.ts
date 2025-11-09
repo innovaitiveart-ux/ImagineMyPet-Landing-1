@@ -3,7 +3,7 @@ import { PaletteIcon, EyeIcon, LightningBoltIcon, CheckCircleIcon, StarIcon as Q
 
 export const ART_STYLES: ArtStyle[] = [
 {
-  id: 'Royalty',
+  id: 'royalty',
   name: 'Royalty',
   description: 'Regal throne-room portrait (King or Queen).',
 
@@ -172,7 +172,7 @@ export const ART_STYLES: ArtStyle[] = [
 }`
 },
 {
-  id: 'Ghibli-inspired',
+  id: 'ghibli-inspired',
   name: 'Ghibli',
   description: 'Hand-painted fantasy portrait in the Studio Ghibli style.',
   prompt: `{
@@ -257,7 +257,7 @@ export const ART_STYLES: ArtStyle[] = [
 }`
 },
 {
-  id: 'Stained Glass',
+  id: 'stained-glass',
   name: 'Stained Glass',
   description: 'Vibrant glass-mosaic portrait in either bold or feminine tones.',
 
@@ -508,7 +508,7 @@ export const ART_STYLES: ArtStyle[] = [
 }`
   },
 {
-  id: 'Watercolor',
+  id: 'watercolor',
   name: 'Watercolor',
   description: 'Soft and expressive watercolor-style pet portrait.',
   prompt: `{
