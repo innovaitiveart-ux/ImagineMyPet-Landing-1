@@ -220,72 +220,89 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
 
   // FIX & UPDATE: Implement full Shopify cart update logic for download product
   const openDigitalProductWithPortrait = async () => {
+    // FIX: Define the base URL for the Shopify store to enable CORS-compliant AJAX calls.
+    // This resolves the cross-origin error when the app is hosted on a different domain/subdomain
+    // (e.g., create.imaginemypet.com calling imaginemypet.com).
+    const SHOPIFY_DOMAIN = 'https://imaginemypet.com'; 
+
     if (!generatedPortrait) {
-      console.error("Cannot proceed: No generated portrait available.");
-      return;
+        console.error("Cannot proceed: No generated portrait available.");
+        alert("Error: Could not start the download process. Please try again or contact support.");
+        return;
     }
     
-    // The Product ID for the digital download must be hardcoded here. 
-    // Assuming the product ID '8093678991668' corresponds to the "Digital Pet Portrait Download"
+    // The Product Variant ID for the digital download must be hardcoded here. 
     const DIGITAL_PRODUCT_VARIANT_ID = 44525048496436; 
     
     // Construct the custom note for the cart
     const styleName = ART_STYLES.find(s => s.id === (activeStyleId || selectedStyle))?.name || 'Unknown Style';
     const note = {
-      image_url: generatedPortrait,
-      style_id: activeStyleId || selectedStyle,
-      style_name: styleName,
-      pet_name: petName || 'N/A',
-      pet_gender: petGender,
-      source: 'imagine_my_pet_app',
+        image_url: generatedPortrait,
+        style_id: activeStyleId || selectedStyle,
+        style_name: styleName,
+        pet_name: petName || 'N/A',
+        pet_gender: petGender,
+        source: 'imagine_my_pet_app',
     };
 
     try {
-      // 1. Clear the cart first (best practice for single-item checkouts)
-      await fetch('/cart/clear.js', { method: 'POST' });
+        // 1. Clear the cart first (using full domain)
+        const clearResponse = await fetch(`${SHOPIFY_DOMAIN}/cart/clear.js`, { method: 'POST' });
+        if (!clearResponse.ok) {
+             console.warn("Cart clear may have failed, proceeding anyway.");
+        }
 
-      // 2. Add the digital product to the cart
-      const addItemResponse = await fetch('/cart/add.js', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          items: [
-            {
-              id: DIGITAL_PRODUCT_VARIANT_ID,
-              quantity: 1,
-              properties: {
-                // Pass the essential properties as line item properties
-                'Art Style': styleName,
-                'Pet Name': petName || 'N/A',
-                // Keep the final image URL hidden in the cart note, but use a friendly message for the property
-                'Image Source': 'Link saved in cart note for fulfillment',
-              }
-            }
-          ]
-        })
-      });
 
-      if (!addItemResponse.ok) throw new Error("Failed to add digital product to cart.");
+        // 2. Add the digital product to the cart (using full domain)
+        const addItemResponse = await fetch(`${SHOPIFY_DOMAIN}/cart/add.js`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                items: [
+                    {
+                        id: DIGITAL_PRODUCT_VARIANT_ID,
+                        quantity: 1,
+                        properties: {
+                            // Pass the essential properties as line item properties
+                            'Art Style': styleName,
+                            'Pet Name': petName || 'N/A',
+                            // Keep the final image URL hidden in the cart note, but use a friendly message for the property
+                            'Image Source': 'Link saved in cart note for fulfillment',
+                        }
+                    }
+                ]
+            })
+        });
 
-      // 3. Update the cart note with the full JSON object
-      const updateNoteResponse = await fetch('/cart/update.js', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          note: JSON.stringify(note) // Stringify the JSON object for the cart note
-        })
-      });
-      
-      if (!updateNoteResponse.ok) throw new Error("Failed to update cart note.");
-      
-      // 4. Redirect to checkout
-      window.location.href = '/checkout';
+        if (!addItemResponse.ok) {
+            const errorText = await addItemResponse.text();
+            throw new Error(`Failed to add digital product to cart: ${addItemResponse.status} - ${errorText}`);
+        }
+
+        // 3. Update the cart note with the full JSON object (using full domain)
+        const updateNoteResponse = await fetch(`${SHOPIFY_DOMAIN}/cart/update.js`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                note: JSON.stringify(note) // Stringify the JSON object for the cart note
+            })
+        });
+        
+        if (!updateNoteResponse.ok) {
+            const errorText = await updateNoteResponse.text();
+            throw new Error(`Failed to update cart note: ${updateNoteResponse.status} - ${errorText}`);
+        }
+        
+        // 4. Redirect to checkout on the Shopify domain
+        window.location.href = `${SHOPIFY_DOMAIN}/checkout`;
 
     } catch (error) {
-      console.error("🚨 Shopify Checkout Process Error:", error);
-      alert("Error: Could not start the download process. Please try again or contact support.");
+        // Log the detailed error for debugging
+        console.error("🚨 Shopify Checkout Process Error:", error);
+        // Show a simple error to the user
+        alert("Error: Could not start the download process. Please try again or contact support.");
     }
-  };
+};
   
   // FIX: Safe redirect for Shopify (original logic was flawed, using URL search params which can exceed limits)
   // The original function tried to use search params, which is bad practice for large data.
@@ -333,7 +350,7 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
           </p>
         </div>
 
-        {/* Main image area */}
+        {/* Main image viewing area */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center max-w-6xl mx-auto">
           {/* Uploaded */}
           <div className="relative w-full aspect-square bg-white rounded-2xl shadow-lg flex items-center justify-center p-4">
@@ -453,6 +470,7 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
               <div className="flex-1 text-center">
                 <button
                   // FIX: Removed e.stopPropagation() and the unnecessary return for the click to execute
+                  // FIX: Now calls the CORS-compliant function
                   onClick={openDigitalProductWithPortrait}
                   className="w-full text-white font-bold py-4 px-8 rounded-lg text-lg
                     bg-gradient-to-r from-[#00c853] to-[#00bfa5]
