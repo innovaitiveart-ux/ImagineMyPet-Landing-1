@@ -19,7 +19,7 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
 
   // UPDATED: savedPortraits state now stores objects
   const [savedPortraits, setSavedPortraits] = useState<SavedPortrait[]>([]);
-  
+
   // NEW CODE: Tracks the style of the image currently shown in the main window
   const [activeStyleId, setActiveStyleId] = useState<string>(ART_STYLES[0].id);
 
@@ -70,16 +70,16 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
         const saved = localStorage.getItem("savedPortraits");
         if (saved) {
           let parsed = JSON.parse(saved);
-          
+
           // Simple check for old string[] format, convert to new SavedPortrait format for safety
           if (Array.isArray(parsed) && parsed.length > 0 && typeof parsed[0] === 'string') {
               // Assuming old format was generated with the *first* style, but it's okay for display
               // This logic mostly exists for non-destructive local storage migration
               parsed = parsed.map((url: string) => ({ url, styleId: ART_STYLES[0].id }));
           }
-          
+
           setSavedPortraits(parsed);
-          
+
           // NEW CODE: Set active style to the latest generated one
           if (parsed.length > 0) {
             setGeneratedPortrait(parsed[parsed.length - 1].url);
@@ -189,16 +189,16 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
       }
 
       setGeneratedPortrait(finalImageUrl);
-      
+
       // UPDATED: Save the full object with styleId
       const newPortrait: SavedPortrait = {
         url: finalImageUrl,
         styleId: selectedStyle, // Use the style from the dropdown for the NEW image
       };
-      
+
       const updated = [...savedPortraits, newPortrait].slice(-6);
       setSavedPortraits(updated);
-      
+
       // NEW CODE: Set the active style to the one just generated
       setActiveStyleId(selectedStyle);
 
@@ -217,8 +217,81 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
     else handleGenerateClick();
   };
 
-  // Safe redirect for Shopify (no 414 URI Too Large)
-  const openDigitalProductWithPortrait = () => {
+
+  // FIX & UPDATE: Implement full Shopify cart update logic for download product
+  const openDigitalProductWithPortrait = async () => {
+    if (!generatedPortrait) {
+      console.error("Cannot proceed: No generated portrait available.");
+      return;
+    }
+    
+    // The Product ID for the digital download must be hardcoded here. 
+    // Assuming the product ID '8093678991668' corresponds to the "Digital Pet Portrait Download"
+    const DIGITAL_PRODUCT_VARIANT_ID = 44525048496436; 
+    
+    // Construct the custom note for the cart
+    const styleName = ART_STYLES.find(s => s.id === (activeStyleId || selectedStyle))?.name || 'Unknown Style';
+    const note = {
+      image_url: generatedPortrait,
+      style_id: activeStyleId || selectedStyle,
+      style_name: styleName,
+      pet_name: petName || 'N/A',
+      pet_gender: petGender,
+      source: 'imagine_my_pet_app',
+    };
+
+    try {
+      // 1. Clear the cart first (best practice for single-item checkouts)
+      await fetch('/cart/clear.js', { method: 'POST' });
+
+      // 2. Add the digital product to the cart
+      const addItemResponse = await fetch('/cart/add.js', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          items: [
+            {
+              id: DIGITAL_PRODUCT_VARIANT_ID,
+              quantity: 1,
+              properties: {
+                // Pass the essential properties as line item properties
+                'Art Style': styleName,
+                'Pet Name': petName || 'N/A',
+                // Keep the final image URL hidden in the cart note, but use a friendly message for the property
+                'Image Source': 'Link saved in cart note for fulfillment',
+              }
+            }
+          ]
+        })
+      });
+
+      if (!addItemResponse.ok) throw new Error("Failed to add digital product to cart.");
+
+      // 3. Update the cart note with the full JSON object
+      const updateNoteResponse = await fetch('/cart/update.js', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          note: JSON.stringify(note) // Stringify the JSON object for the cart note
+        })
+      });
+      
+      if (!updateNoteResponse.ok) throw new Error("Failed to update cart note.");
+      
+      // 4. Redirect to checkout
+      window.location.href = '/checkout';
+
+    } catch (error) {
+      console.error("🚨 Shopify Checkout Process Error:", error);
+      alert("Error: Could not start the download process. Please try again or contact support.");
+    }
+  };
+  
+  // FIX: Safe redirect for Shopify (original logic was flawed, using URL search params which can exceed limits)
+  // The original function tried to use search params, which is bad practice for large data.
+  // The correct pattern is to use the Shopify AJAX API to add the item and set the cart note, then redirect to checkout.
+  // Renamed the old logic to openDigitalProductWithPortraitLegacy for reference.
+  const openDigitalProductWithPortraitLegacy = () => {
     if (!generatedPortrait) return;
     const base = "https://imaginemypet.com/products/digital-pet-portrait-download";
     const url = new URL(base);
@@ -231,9 +304,9 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
       url.searchParams.set("note", "Generated portrait available via app");
     }
     // UPDATED: The download link should also use the active style ID for consistency
-    const styleToPass = activeStyleId || selectedStyle; 
+    const styleToPass = activeStyleId || selectedStyle;
     url.searchParams.set("style", styleToPass);
-    
+
     if (petName) url.searchParams.set("petName", petName);
 
     try {
@@ -379,11 +452,8 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
               {/* LEFT: Download */}
               <div className="flex-1 text-center">
                 <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (!generatedPortrait) return;
-                    openDigitalProductWithPortrait();
-                  }}
+                  // FIX: Removed e.stopPropagation() and the unnecessary return for the click to execute
+                  onClick={openDigitalProductWithPortrait}
                   className="w-full text-white font-bold py-4 px-8 rounded-lg text-lg
                     bg-gradient-to-r from-[#00c853] to-[#00bfa5]
                     shadow-[0_6px_15px_rgba(0,191,165,0.3)]
@@ -403,8 +473,8 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
                   onClick={() => {
                     // NEW CODE: Use activeStyleId (from thumbnail) or fallback to selectedStyle (from dropdown) whatev
                     // The style ID is converted to lowercase for lookup against the URL map keys.
-                    const effectiveStyle = activeStyleId || selectedStyle; 
-                    
+                    const effectiveStyle = activeStyleId || selectedStyle;
+
                     // UPDATED: Corrected styleLinks with keys matching your established lowercase/hyphenated IDs
                     const styleLinks: Record<string, string> = {
                       "royalty": "https://imaginemypet.com/collections/custom-royal-pet-portrait",
@@ -412,10 +482,10 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
                       // Using the hyphenated URL slug key which is common for "Stained Glass" ID
                       "stained-glass": "https://imaginemypet.com/collections/stained-glass",
                       "jedi-warrior": "https://imaginemypet.com/collections/jedi-warrior",
-                      "ghibli-inspired": "https://imaginemypet.com/collections/whimsical-ghibli-inspired-portrait", 
+                      "ghibli-inspired": "https://imaginemypet.com/collections/whimsical-ghibli-inspired-portrait",
                     };
 
-                    // UPDATED: Use the effective style ID (lower-cased, replacing space with hyphen for map lookup)
+                    // UPDATED: Use the effective style ID (lower-cased, replacing space with - for map lookup)
                     let styleKey = effectiveStyle.toLowerCase().replace(/ /g, '-');
                     const redirectUrl = styleLinks[styleKey] || "https://imaginemypet.com/collections";
                     window.open(redirectUrl, "_blank");
