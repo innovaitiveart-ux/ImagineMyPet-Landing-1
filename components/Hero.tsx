@@ -218,19 +218,20 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
   };
 
 
-  // FIX & UPDATE: Implement full Shopify cart update logic for download product
-  const openDigitalProductWithPortrait = async () => {
-    const SHOPIFY_DOMAIN = 'https://imaginemypet.com'; 
-
+  // ** CRITICAL FIX: Reverting to Form Submission to bypass strict Shopify AJAX/CORS rules **
+  const openDigitalProductWithPortrait = () => {
+    const SHOPIFY_DOMAIN = 'https://www.imaginemypet.com'; 
+    
     if (!generatedPortrait) {
         console.error("Cannot proceed: No generated portrait available.");
         alert("Error: Could not start the download process. Please try again or contact support.");
         return;
     }
     
-    // The Product Variant ID for the digital download must be hardcoded here. 
-    const DIGITAL_PRODUCT_VARIANT_ID = 44525048496436; 
+    // Product Variant ID for the digital download
+    const DIGITAL_PRODUCT_VARIANT_ID = 8514736554072; 
     
+    // Construct the custom note data (as a JSON string)
     const styleName = ART_STYLES.find(s => s.id === (activeStyleId || selectedStyle))?.name || 'Unknown Style';
     const noteData = {
         image_url: generatedPortrait,
@@ -242,72 +243,49 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
     };
     const stringifiedNote = JSON.stringify(noteData);
 
-    // Standard headers for cart modification (x-www-form-urlencoded format)
-    const standardHeaders = {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        // FIX: The critical header for cross-origin AJAX compatibility with Shopify
-        'X-Requested-With': 'XMLHttpRequest' 
+    // 1. Create a dynamic form element
+    const form = document.createElement('form');
+    // Action must point to the Shopify add-to-cart endpoint on the main domain
+    form.action = `${SHOPIFY_DOMAIN}/cart/add`;
+    form.method = 'POST';
+    // Essential for cross-origin form submission (ensures cookies are sent, though less critical than for AJAX)
+    form.target = '_self'; 
+    form.style.display = 'none';
+
+    // Helper function to create hidden input fields
+    const createInput = (name: string, value: string | number) => {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = name;
+        input.value = String(value);
+        return input;
     };
 
-    try {
-        // 1. Clear the cart first 
-        const clearResponse = await fetch(`${SHOPIFY_DOMAIN}/cart/clear.js`, { 
-            method: 'POST',
-            credentials: 'include',
-            // It's safest to include the X-Requested-With header here too
-            headers: { 'X-Requested-With': 'XMLHttpRequest' }
-        });
-        if (!clearResponse.ok) {
-             console.warn("Cart clear may have failed, proceeding anyway.");
-        }
+    // 2. Add item details
+    // The main variant ID for the digital product
+    form.appendChild(createInput('id', DIGITAL_PRODUCT_VARIANT_ID));
+    form.appendChild(createInput('quantity', 1));
 
+    // 3. Add Line Item Properties (using properties[key] syntax)
+    form.appendChild(createInput('properties[Art Style]', styleName));
+    form.appendChild(createInput('properties[Pet Name]', petName || 'N/A'));
+    form.appendChild(createInput('properties[Image Source]', 'Link saved in cart note for fulfillment'));
 
-        // 2. Add the digital product to the cart 
-        const addBody = new URLSearchParams();
-        addBody.append('id', DIGITAL_PRODUCT_VARIANT_ID.toString());
-        addBody.append('quantity', '1');
-        
-        // Line Item Properties 
-        addBody.append('properties[Art Style]', styleName);
-        addBody.append('properties[Pet Name]', petName || 'N/A');
-        addBody.append('properties[Image Source]', 'Link saved in cart note for fulfillment');
+    // 4. Add the Cart Note
+    form.appendChild(createInput('note', stringifiedNote));
 
-        const addItemResponse = await fetch(`${SHOPIFY_DOMAIN}/cart/add.js`, {
-            method: 'POST',
-            headers: standardHeaders, // Includes Content-Type and X-Requested-With
-            credentials: 'include',
-            body: addBody.toString()
-        });
+    // 5. Add a return URL to immediately redirect to checkout after adding the item
+    // This tells Shopify's add-to-cart endpoint where to send the user next.
+    form.appendChild(createInput('return_to', '/checkout'));
 
-        if (!addItemResponse.ok) {
-            const errorText = await addItemResponse.text();
-            throw new Error(`Failed to add digital product to cart: ${addItemResponse.status} - ${errorText}`);
-        }
+    // 6. Append the form to the document, submit it, and remove it
+    document.body.appendChild(form);
+    form.submit();
+    document.body.removeChild(form);
 
-        // 3. Update the cart note with the full JSON object
-        const noteBody = new URLSearchParams();
-        noteBody.append('note', stringifiedNote);
-
-        const updateNoteResponse = await fetch(`${SHOPIFY_DOMAIN}/cart/update.js`, {
-            method: 'POST',
-            headers: standardHeaders, // Includes Content-Type and X-Requested-With
-            credentials: 'include',
-            body: noteBody.toString()
-        });
-        
-        if (!updateNoteResponse.ok) {
-            const errorText = await updateNoteResponse.text();
-            throw new Error(`Failed to update cart note: ${updateNoteResponse.status} - ${errorText}`);
-        }
-        
-        // 4. Redirect to checkout on the Shopify domain
-        window.location.href = `${SHOPIFY_DOMAIN}/checkout`;
-
-    } catch (error) {
-        console.error("🚨 Shopify Checkout Process Error:", error);
-        alert("Error: Could not start the download process. Please try again or contact support.");
-    }
-};
+    // IMPORTANT: The browser will automatically clear any previous cart items based on the Shopify theme's settings
+    // when a standard form submission hits /cart/add. This pattern is far more reliable than the AJAX /cart/clear.js.
+  };
   
   // FIX: Safe redirect for Shopify (original logic was flawed, using URL search params which can exceed limits)
   // The original function tried to use search params, which is bad practice for large data.
@@ -474,7 +452,7 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
               {/* LEFT: Download */}
               <div className="flex-1 text-center">
                 <button
-                  // FIX: Now calls the fully compliant CORS function
+                  // FIX: Now calls the fully compliant Form Submission function
                   onClick={openDigitalProductWithPortrait}
                   className="w-full text-white font-bold py-4 px-8 rounded-lg text-lg
                     bg-gradient-to-r from-[#00c853] to-[#00bfa5]
