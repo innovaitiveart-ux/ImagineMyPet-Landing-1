@@ -220,7 +220,7 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
 
   // FIX & UPDATE: Implement full Shopify cart update logic for download product
   const openDigitalProductWithPortrait = async () => {
-    // FIX: Define the base URL for the Shopify store to enable CORS-compliant AJAX calls.
+    // FIX 1: Define the base URL for the Shopify store to enable CORS-compliant AJAX calls.
     // This resolves the cross-origin error when the app is hosted on a different domain/subdomain
     // (e.g., create.imaginemypet.com calling imaginemypet.com).
     const SHOPIFY_DOMAIN = 'https://imaginemypet.com'; 
@@ -246,8 +246,16 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
     };
 
     try {
+        // FIX 2: Added credentials: 'include' to all cross-origin fetch calls.
+        // This is ESSENTIAL for the browser to send the Shopify session cookies 
+        // (which contain the cart context) when making requests from 
+        // create.imaginemypet.com to imaginemypet.com.
+
         // 1. Clear the cart first (using full domain)
-        const clearResponse = await fetch(`${SHOPIFY_DOMAIN}/cart/clear.js`, { method: 'POST' });
+        const clearResponse = await fetch(`${SHOPIFY_DOMAIN}/cart/clear.js`, { 
+            method: 'POST',
+            credentials: 'include' // <-- Fix 2 Applied
+        });
         if (!clearResponse.ok) {
              console.warn("Cart clear may have failed, proceeding anyway.");
         }
@@ -257,6 +265,7 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
         const addItemResponse = await fetch(`${SHOPIFY_DOMAIN}/cart/add.js`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'include', // <-- Fix 2 Applied
             body: JSON.stringify({
                 items: [
                     {
@@ -283,6 +292,7 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
         const updateNoteResponse = await fetch(`${SHOPIFY_DOMAIN}/cart/update.js`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'include', // <-- Fix 2 Applied
             body: JSON.stringify({
                 note: JSON.stringify(note) // Stringify the JSON object for the cart note
             })
