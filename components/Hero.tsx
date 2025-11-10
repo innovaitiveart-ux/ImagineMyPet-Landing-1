@@ -3,16 +3,6 @@ import { ART_STYLES } from "../constants";
 import { generateWithFAL } from "../services/geminiService.js";
 import { uploadToCloudinary } from "../services/cloudinaryService";
 
-// Helper: create hidden input elements
-const createInput = (name: string, value: string | number) => {
-  const input = document.createElement('input');
-  input.type = 'hidden';
-  input.name = name;
-  input.value = String(value);
-  return input;
-};
-
-
 // NEW CODE: New Type Definition for Saved Portraits
 type SavedPortrait = {
   url: string;
@@ -83,9 +73,9 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
 
           // Simple check for old string[] format, convert to new SavedPortrait format for safety
           if (Array.isArray(parsed) && parsed.length > 0 && typeof parsed[0] === 'string') {
-              // Assuming old format was generated with the *first* style, but it's okay for display
-              // This logic mostly exists for non-destructive local storage migration
-              parsed = parsed.map((url: string) => ({ url, styleId: ART_STYLES[0].id }));
+            // Assuming old format was generated with the *first* style, but it's okay for display
+            // This logic mostly exists for non-destructive local storage migration
+            parsed = parsed.map((url: string) => ({ url, styleId: ART_STYLES[0].id }));
           }
 
           setSavedPortraits(parsed);
@@ -227,119 +217,14 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
     else handleGenerateClick();
   };
 
-
-  // ** CRITICAL FIX: Reverting to Form Submission to bypass strict Shopify AJAX/CORS rules **
-  // Helper function for hidden inputs
-const createInput = (name: string, value: string | number) => {
-  const input = document.createElement('input');
-  input.type = 'hidden';
-  input.name = name;
-  input.value = String(value);
-  return input;
-};
-
-// ✅ Definitive one-step Shopify POST (Gemini’s fix)
-const openDigitalProductWithPortrait = () => {
-  const SHOPIFY_DOMAIN = 'https://www.imaginemypet.com';
-  const DIGITAL_PRODUCT_VARIANT_ID = 43343579316312;
-
-  if (!generatedPortrait) {
-    console.error("Cannot proceed: No generated portrait available.");
-    alert("Error: Could not start the download process. Please try again or contact support.");
-    return;
-  }
-
-  const styleName =
-    ART_STYLES.find((s) => s.id === (activeStyleId || selectedStyle))?.name || 'Unknown Style';
-
-  const payloadObject = {
-    image_url: generatedPortrait,
-    style_id: activeStyleId || selectedStyle,
-    style_name: styleName,
-    pet_name: petName || 'N/A',
-    pet_gender: petGender,
-    source: 'imagine_my_pet_app',
-  };
-  const stringifiedPayload = JSON.stringify(payloadObject);
-
-  const form = document.createElement('form');
-  form.action = `${SHOPIFY_DOMAIN}/cart/add`;
-  form.method = 'POST';
-  form.target = '_self';
-  form.style.display = 'none';
-
-  form.appendChild(createInput('id', DIGITAL_PRODUCT_VARIANT_ID));
-  form.appendChild(createInput('quantity', 1));
-  form.appendChild(createInput('properties[Art Style]', styleName));
-  form.appendChild(createInput('properties[Pet Name]', petName || 'N/A'));
-  form.appendChild(createInput('properties[_FulfillmentData]', stringifiedPayload));
-  form.appendChild(createInput('properties[_redirect_to_checkout]', 'true'));
-
-  document.body.appendChild(form);
-  form.submit();
-  document.body.removeChild(form);
-};
-
-
-  const styleName =
-    ART_STYLES.find(s => s.id === (activeStyleId || selectedStyle))?.name || 'Unknown Style';
-
-  const payloadObject = {
-    image_url: generatedPortrait,
-    style_id: activeStyleId || selectedStyle,
-    style_name: styleName,
-    pet_name: petName || 'N/A',
-    pet_gender: petGender,
-    source: 'imagine_my_pet_app',
+  // ✅ SIMPLE: Just send them to your product page — no cart/add, no properties, no note
+  const openDigitalProductWithPortrait = () => {
+    window.location.href = "https://www.imaginemypet.com/products/digital-pet-portrait-download";
   };
 
-  const stringifiedPayload = JSON.stringify(payloadObject);
-
-  const form = document.createElement('form');
-  form.action = `${SHOPIFY_DOMAIN}/cart/add`;
-  form.method = 'POST';
-  form.target = '_self';
-  form.style.display = 'none';
-
-  form.appendChild(createInput('id', DIGITAL_PRODUCT_VARIANT_ID));
-  form.appendChild(createInput('quantity', 1));
-
-  // add item properties
-  form.appendChild(createInput('properties[Art Style]', styleName));
-  form.appendChild(createInput('properties[Pet Name]', petName || 'N/A'));
-  form.appendChild(createInput('properties[_FulfillmentData]', stringifiedPayload));
-
-  // redirect to checkout using absolute URL
-  form.appendChild(createInput('return_to', `${SHOPIFY_DOMAIN}/checkout`));
-
-  document.body.appendChild(form);
-  form.submit();
-  document.body.removeChild(form);
-};
-
+  // (Optional) Legacy link opener kept in case you still want a new tab behavior somewhere else
   const openDigitalProductWithPortraitLegacy = () => {
-    if (!generatedPortrait) return;
-    const base = "https://imaginemypet.com/products/digital-pet-portrait-download";
-    const url = new URL(base);
-
-    // Only include a normal URL in the note (never the big data: URL)
-    if (generatedPortrait.startsWith("http")) {
-      // Keep note concise to avoid long URLs
-      url.searchParams.set("note", generatedPortrait);
-    } else {
-      url.searchParams.set("note", "Generated portrait available via app");
-    }
-    // UPDATED: The download link should also use the active style ID for consistency
-    const styleToPass = activeStyleId || selectedStyle;
-    url.searchParams.set("style", styleToPass);
-
-    if (petName) url.searchParams.set("petName", petName);
-
-    try {
-      localStorage.setItem("chosenPortraitUrl", generatedPortrait);
-    } catch {}
-
-    window.open(url.toString(), "_blank");
+    window.open("https://www.imaginemypet.com/products/digital-pet-portrait-download", "_blank");
   };
 
   return (
@@ -369,7 +254,7 @@ const openDigitalProductWithPortrait = () => {
               <div className="text-center text-stone-400">
                 <img src="/images/placeholder-pet.jpg" alt="Placeholder Pet" className="opacity-30 rounded-lg" />
                 <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-xl font-semibold text-black drop-shadow-md">
-                    Your Photo Here
+                  Your Photo Here
                 </span>
               </div>
             )}
@@ -405,25 +290,23 @@ const openDigitalProductWithPortrait = () => {
               {/* High-contrast watermark (visible on light or dark images) */}
               {generatedPortrait && (
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10 overflow-hidden">
-  <span
-    className="font-extrabold select-none"
-    style={{
-      fontSize: "clamp(0.8rem, 3vw, 2rem)",
-      transform: "rotate(-25deg)",
-      whiteSpace: "nowrap",
-      opacity: 0.25,
-      color: "white",
-      textShadow:
-        "0 0 2px rgba(0,0,0,0.8), 0 0 6px rgba(0,0,0,0.4)",
-      WebkitTextStroke: "0.5px rgba(0,0,0,0.5)",
-      mixBlendMode: "soft-light",
-      maxWidth: "90%",
-    }}
-  >
-    ImagineMyPet.com
-  </span>
-</div>
-
+                  <span
+                    className="font-extrabold select-none"
+                    style={{
+                      fontSize: "clamp(0.8rem, 3vw, 2rem)",
+                      transform: "rotate(-25deg)",
+                      whiteSpace: "nowrap",
+                      opacity: 0.25,
+                      color: "white",
+                      textShadow: "0 0 2px rgba(0,0,0,0.8), 0 0 6px rgba(0,0,0,0.4)",
+                      WebkitTextStroke: "0.5px rgba(0,0,0,0.5)",
+                      mixBlendMode: "soft-light",
+                      maxWidth: "90%",
+                    }}
+                  >
+                    ImagineMyPet.com
+                  </span>
+                </div>
               )}
 
               {/* Limit notice ONLY when user tried to exceed limit (never blocks thumbnails) */}
@@ -439,21 +322,19 @@ const openDigitalProductWithPortrait = () => {
             {/* Thumbnails */}
             {savedPortraits.length > 0 && (
               <div className="mt-4 flex flex-wrap justify-center gap-2">
-                {savedPortraits.map((item, idx) => ( // UPDATED: Change 'url' to 'item' to access styleId
+                {savedPortraits.map((item, idx) => (
                   <img
                     key={idx}
-                    src={item.url} // UPDATED: Use item.url
+                    src={item.url}
                     alt={`Saved portrait ${idx + 1}`}
                     className={`w-16 h-16 rounded-lg cursor-pointer border-2 ${
                       generatedPortrait === item.url ? "border-teal-600" : "border-transparent"
                     }`}
                     onClick={() => {
                       setGeneratedPortrait(item.url);
-                      setActiveStyleId(item.styleId); // FIX: Sets the style to the thumbnail's style
-                      setError(null)
-                      // Hide limit notice when browsing old ones
-                      setShowLimitNotice(false);
+                      setActiveStyleId(item.styleId);
                       setError(null);
+                      setShowLimitNotice(false);
                     }}
                   />
                 ))}
@@ -469,16 +350,15 @@ const openDigitalProductWithPortrait = () => {
             <p className="mt-2 text-stone-600">
               <p className="mt-2 text-stone-600">
                 You can download your high-resolution digital copy or print it on premium products.{" "}
-                Your final purchased portrait will be delivered <span className="font-semibold text-teal-600">completely watermark-free</span> in full high-resolution quality.
-</p>
-
+                Your final purchased portrait will be delivered{" "}
+                <span className="font-semibold text-teal-600">completely watermark-free</span> in full high-resolution quality.
+              </p>
             </p>
 
             <div className="flex flex-col sm:flex-row justify-center gap-6 mt-6">
               {/* LEFT: Download */}
               <div className="flex-1 text-center">
                 <button
-                  // FIX: Now calls the fully compliant Form Submission function
                   onClick={openDigitalProductWithPortrait}
                   className="w-full text-white font-bold py-4 px-8 rounded-lg text-lg
                     bg-gradient-to-r from-[#00c853] to-[#00bfa5]
@@ -500,18 +380,17 @@ const openDigitalProductWithPortrait = () => {
                     const effectiveStyle = activeStyleId || selectedStyle;
 
                     const styleLinks: Record<string, string> = {
-                      "royalty": "https://imaginemypet.com/collections/custom-royal-pet-portrait",
-                      "watercolor": "https://imaginemypet.com/collections/watercolor-1",
+                      royalty: "https://imaginemypet.com/collections/custom-royal-pet-portrait",
+                      watercolor: "https://imaginemypet.com/collections/watercolor-1",
                       "stained-glass": "https://imaginemypet.com/collections/stained-glass",
                       "jedi-warrior": "https://imaginemypet.com/collections/jedi-warrior",
                       "ghibli-inspired": "https://imaginemypet.com/collections/whimsical-ghibli-inspired-portrait",
                     };
 
-                    let styleKey = effectiveStyle.toLowerCase().replace(/ /g, '-');
+                    const styleKey = effectiveStyle.toLowerCase().replace(/ /g, "-");
                     const redirectUrl = styleLinks[styleKey] || "https://imaginemypet.com/collections";
                     window.open(redirectUrl, "_blank");
                   }}
-
                   className="w-full text-white font-bold py-4 px-8 rounded-lg text-lg
                     bg-gradient-to-r from-[#00c853] to-[#00bfa5]
                     shadow-[0_6px_15px_rgba(0,191,165,0.3)]
