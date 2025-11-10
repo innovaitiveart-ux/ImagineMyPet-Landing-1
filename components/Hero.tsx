@@ -263,7 +263,7 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
           {/* Generated */}
           <div className="relative w-full aspect-square bg-white rounded-2xl shadow-lg flex flex-col items-center justify-start p-4">
             <div className="relative w-full flex-1 flex items-center justify-center overflow-hidden rounded-lg">
-              {/* Loading overlay */}
+              {/* Loading Overlay */}
               {isLoading && (
                 <div className="absolute inset-0 bg-white/80 flex flex-col items-center justify-center rounded-2xl z-20">
                   <div className="w-16 h-16 border-4 border-teal-500 border-dashed rounded-full animate-spin"></div>
