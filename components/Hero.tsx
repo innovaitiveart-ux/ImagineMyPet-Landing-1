@@ -1,5 +1,4 @@
-﻿# Temporary change to trigger Git
-import React, { useState, useRef, forwardRef, useImperativeHandle, useEffect } from "react";
+﻿import React, { useState, useRef, forwardRef, useImperativeHandle, useEffect } from "react";
 import { ART_STYLES } from "../constants";
 import { generateWithFAL } from "../services/geminiService.js";
 import { uploadToCloudinary } from "../services/cloudinaryService";
