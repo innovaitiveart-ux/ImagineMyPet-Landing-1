@@ -3,6 +3,16 @@ import { ART_STYLES } from "../constants";
 import { generateWithFAL } from "../services/geminiService.js";
 import { uploadToCloudinary } from "../services/cloudinaryService";
 
+// Helper: create hidden input elements
+const createInput = (name: string, value: string | number) => {
+  const input = document.createElement('input');
+  input.type = 'hidden';
+  input.name = name;
+  input.value = String(value);
+  return input;
+};
+
+
 // NEW CODE: New Type Definition for Saved Portraits
 type SavedPortrait = {
   url: string;
@@ -231,12 +241,45 @@ const createInput = (name: string, value: string | number) => {
 // ✅ Definitive one-step Shopify POST (Gemini’s fix)
 const openDigitalProductWithPortrait = () => {
   const SHOPIFY_DOMAIN = 'https://www.imaginemypet.com';
-  const DIGITAL_PRODUCT_VARIANT_ID = 43343579316312; // confirmed variant
+  const DIGITAL_PRODUCT_VARIANT_ID = 43343579316312;
 
   if (!generatedPortrait) {
-    console.error('Cannot proceed: No generated portrait available.');
+    console.error("Cannot proceed: No generated portrait available.");
+    alert("Error: Could not start the download process. Please try again or contact support.");
     return;
   }
+
+  const styleName =
+    ART_STYLES.find((s) => s.id === (activeStyleId || selectedStyle))?.name || 'Unknown Style';
+
+  const payloadObject = {
+    image_url: generatedPortrait,
+    style_id: activeStyleId || selectedStyle,
+    style_name: styleName,
+    pet_name: petName || 'N/A',
+    pet_gender: petGender,
+    source: 'imagine_my_pet_app',
+  };
+  const stringifiedPayload = JSON.stringify(payloadObject);
+
+  const form = document.createElement('form');
+  form.action = `${SHOPIFY_DOMAIN}/cart/add`;
+  form.method = 'POST';
+  form.target = '_self';
+  form.style.display = 'none';
+
+  form.appendChild(createInput('id', DIGITAL_PRODUCT_VARIANT_ID));
+  form.appendChild(createInput('quantity', 1));
+  form.appendChild(createInput('properties[Art Style]', styleName));
+  form.appendChild(createInput('properties[Pet Name]', petName || 'N/A'));
+  form.appendChild(createInput('properties[_FulfillmentData]', stringifiedPayload));
+  form.appendChild(createInput('properties[_redirect_to_checkout]', 'true'));
+
+  document.body.appendChild(form);
+  form.submit();
+  document.body.removeChild(form);
+};
+
 
   const styleName =
     ART_STYLES.find(s => s.id === (activeStyleId || selectedStyle))?.name || 'Unknown Style';
