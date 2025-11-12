@@ -335,7 +335,7 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
                     alt="Generated Pet Portrait"
                     className="max-w-full max-h-full object-contain rounded-lg"
                   />
-                  {/* Watermark is now inside the clickable area */}
+                  {/* Watermark in Preview (Strong Style) */}
                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10 overflow-hidden">
                     <span
                       className="font-extrabold select-none"
@@ -343,15 +343,15 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
                         fontSize: "clamp(0.8rem, 3vw, 2rem)",
                         transform: "rotate(-25deg)",
                         whiteSpace: "nowrap",
-                        opacity: 0.38, // slightly stronger
-                        color: "rgba(255,255,255,0.95)", // near white, more presence
+                        opacity: 0.38, // STRONG STYLE
+                        color: "rgba(255,255,255,0.95)", // STRONG STYLE
                         textShadow: `
                           0 0 2px rgba(0,0,0,0.9),
                           0 0 6px rgba(0,0,0,0.6),
                           0 0 10px rgba(0,0,0,0.3)
-                        `, // subtle glow and contrast edge
-                        WebkitTextStroke: "0.8px rgba(0,0,0,0.6)", // darker stroke to define edges
-                        mixBlendMode: "overlay", // maintains translucency but better midtone contrast
+                        `, // STRONG STYLE
+                        WebkitTextStroke: "0.8px rgba(0,0,0,0.6)", // STRONG STYLE
+                        mixBlendMode: "overlay", // STRONG STYLE
                         maxWidth: "90%",
                       }}
                     >
@@ -585,26 +585,30 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
                   }}
                 />
 
-                {/* CORRECTED Watermark in Modal - Positioned relative to the image/wrapper */}
+                {/* CORRECTED Watermark in Modal (Strong Style Synced) */}
                 <div 
                   className="absolute inset-0 flex items-center justify-center pointer-events-none z-10 overflow-hidden"
                 >
                     <span
                       className="font-extrabold select-none"
                       style={{
+                        // Kept the larger font size suitable for the modal
                         fontSize: "clamp(1.5rem, 5vw, 3.5rem)", 
-                        transform: "rotate(-25deg)",
                         whiteSpace: "nowrap",
-                        opacity: 0.25,
-                        color: "white",
-                        textShadow: "0 0 2px rgba(0,0,0,0.8), 0 0 6px rgba(0,0,0,0.4)",
-                        WebkitTextStroke: "0.5px rgba(0,0,0,0.5)",
-                        mixBlendMode: "soft-light",
+                        opacity: 0.38, // SYNCHED: Stronger opacity
+                        color: "rgba(255,255,255,0.95)", // SYNCHED: Near white for better contrast
+                        textShadow: `
+                          0 0 2px rgba(0,0,0,0.9),
+                          0 0 6px rgba(0,0,0,0.6),
+                          0 0 10px rgba(0,0,0,0.3)
+                        `, // SYNCHED: Stronger shadow
+                        WebkitTextStroke: "0.8px rgba(0,0,0,0.6)", // SYNCHED: Stronger outline
+                        mixBlendMode: "overlay", // SYNCHED: Better blending contrast
                         maxWidth: "90%",
                         position: 'absolute', 
                         top: '50%',
                         left: '50%',
-                        transform: 'translate(-50%, -50%) rotate(-25deg)', // Center and rotate
+                        transform: 'translate(-50%, -50%) rotate(-25deg)', 
                         textAlign: 'center',
                       }}
                     >
