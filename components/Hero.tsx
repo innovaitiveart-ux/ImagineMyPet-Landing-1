@@ -217,9 +217,24 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
     else handleGenerateClick();
   };
 
-  // ✅ SIMPLE: Just send them to your product page — no cart/add, no properties, no note
+  // ✅ Passes the generated portrait URL to the product page
   const openDigitalProductWithPortrait = () => {
-    window.location.href = "https://www.imaginemypet.com/products/digital-pet-portrait-download";
+    if (!generatedPortrait) {
+      // This shouldn't happen since the button is conditional, but it's a good safeguard
+      console.error("No portrait URL to link.");
+      // Fallback to the generic product page
+      window.location.href = "https://www.imaginemypet.com/products/digital-pet-portrait-download";
+      return;
+    }
+
+    // Create the product URL
+    const productUrl = new URL("https://www.imaginemypet.com/products/digital-pet-portrait-download");
+    
+    // Append the generated image as the 'img' query parameter
+    productUrl.searchParams.append("img", generatedPortrait);
+
+    // Redirect the user
+    window.location.href = productUrl.href;
   };
 
   // (Optional) Legacy link opener kept in case you still want a new tab behavior somewhere else
