@@ -342,13 +342,18 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
                       fontSize: "clamp(0.8rem, 3vw, 2rem)",
                       transform: "rotate(-25deg)",
                       whiteSpace: "nowrap",
-                      opacity: 0.25,
-                      color: "white",
-                      textShadow: "0 0 2px rgba(0,0,0,0.8), 0 0 6px rgba(0,0,0,0.4)",
-                      WebkitTextStroke: "0.5px rgba(0,0,0,0.5)",
-                      mixBlendMode: "soft-light",
+                      opacity: 0.38, // slightly stronger
+                      color: "rgba(255,255,255,0.95)", // near white, more presence
+                      textShadow: `
+                        0 0 2px rgba(0,0,0,0.9),
+                        0 0 6px rgba(0,0,0,0.6),
+                        0 0 10px rgba(0,0,0,0.3)
+                      `, // subtle glow and contrast edge
+                      WebkitTextStroke: "0.8px rgba(0,0,0,0.6)", // darker stroke to define edges
+                      mixBlendMode: "overlay", // maintains translucency but better midtone contrast
                       maxWidth: "90%",
                     }}
+
                   >
                     ImagineMyPet.com
                   </span>
