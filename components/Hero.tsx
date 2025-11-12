@@ -29,6 +29,9 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
+  // ADDED: State to control the visibility of the zoom modal
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+
   // Shows “limit reached” only when the user tries to generate after hitting the cap
   const [showLimitNotice, setShowLimitNotice] = useState<boolean>(false);
 
@@ -317,45 +320,50 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
                 </div>
               )}
 
-              {/* Image or placeholder */}
+              {/* Image or placeholder - NOW ZOOMABLE */}
               {generatedPortrait ? (
-                <img
-                  src={generatedPortrait}
-                  alt="Generated Pet Portrait"
-                  className="max-w-full max-h-full object-contain rounded-lg"
-                />
+                // Zoomable Generated Image Container
+                <div
+                  className={`relative w-full h-full flex items-center justify-center p-2 cursor-pointer transition-transform duration-300 ease-in-out hover:scale-[1.02] ${
+                    isLoading ? 'pointer-events-none' : ''
+                  }`}
+                  onClick={() => setIsModalOpen(true)} // <-- CLICK HANDLER ADDED
+                  aria-label="Click to zoom on the generated portrait"
+                >
+                  <img
+                    src={generatedPortrait}
+                    alt="Generated Pet Portrait"
+                    className="max-w-full max-h-full object-contain rounded-lg"
+                  />
+                  {/* Watermark is now inside the clickable area */}
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10 overflow-hidden">
+                    <span
+                      className="font-extrabold select-none"
+                      style={{
+                        fontSize: "clamp(0.8rem, 3vw, 2rem)",
+                        transform: "rotate(-25deg)",
+                        whiteSpace: "nowrap",
+                        opacity: 0.38, // slightly stronger
+                        color: "rgba(255,255,255,0.95)", // near white, more presence
+                        textShadow: `
+                          0 0 2px rgba(0,0,0,0.9),
+                          0 0 6px rgba(0,0,0,0.6),
+                          0 0 10px rgba(0,0,0,0.3)
+                        `, // subtle glow and contrast edge
+                        WebkitTextStroke: "0.8px rgba(0,0,0,0.6)", // darker stroke to define edges
+                        mixBlendMode: "overlay", // maintains translucency but better midtone contrast
+                        maxWidth: "90%",
+                      }}
+                    >
+                      ImagineMyPet.com
+                    </span>
+                  </div>
+                </div>
               ) : (
                 <div className="text-center text-stone-400 w-full h-full flex items-center justify-center">
                   <img src="/images/placeholder-art.png" alt="Placeholder Art" className="opacity-30 rounded-lg" />
                   <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-xl font-semibold text-black drop-shadow-md">
                     Your Portrait Here
-                  </span>
-                </div>
-              )}
-
-              {/* High-contrast watermark (visible on light or dark images) */}
-              {generatedPortrait && (
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10 overflow-hidden">
-                  <span
-                    className="font-extrabold select-none"
-                    style={{
-                      fontSize: "clamp(0.8rem, 3vw, 2rem)",
-                      transform: "rotate(-25deg)",
-                      whiteSpace: "nowrap",
-                      opacity: 0.38, // slightly stronger
-                      color: "rgba(255,255,255,0.95)", // near white, more presence
-                      textShadow: `
-                        0 0 2px rgba(0,0,0,0.9),
-                        0 0 6px rgba(0,0,0,0.6),
-                        0 0 10px rgba(0,0,0,0.3)
-                      `, // subtle glow and contrast edge
-                      WebkitTextStroke: "0.8px rgba(0,0,0,0.6)", // darker stroke to define edges
-                      mixBlendMode: "overlay", // maintains translucency but better midtone contrast
-                      maxWidth: "90%",
-                    }}
-
-                  >
-                    ImagineMyPet.com
                   </span>
                 </div>
               )}
@@ -545,6 +553,76 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
             )}
           </div>
         </div>
+
+        {/* NEW CODE: Full-Screen Zoom Modal */}
+        {generatedPortrait && isModalOpen && (
+          <div 
+            className="fixed inset-0 bg-black/90 z-[9999] flex items-center justify-center p-4 cursor-zoom-out backdrop-blur-sm"
+            onClick={() => setIsModalOpen(false)}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Generated Portrait Zoom View"
+          >
+            {/* Modal Content - prevents closing when clicking the image itself */}
+            <div 
+              className="relative max-w-7xl w-full h-full p-8" 
+              onClick={(e) => e.stopPropagation()}
+            >
+              <img
+                src={generatedPortrait}
+                alt="Generated Pet Portrait (Zoomed)"
+                className="max-w-full max-h-full object-contain mx-auto rounded-xl shadow-2xl"
+                style={{
+                  // Ensures the image takes the maximum space while respecting aspect ratio
+                  display: 'block',
+                  maxWidth: '100%',
+                  maxHeight: '100%',
+                  width: 'auto',
+                  height: 'auto',
+                }}
+              />
+              
+              {/* Watermark in Modal */}
+              <div 
+                className="absolute inset-0 flex items-center justify-center pointer-events-none z-10 overflow-hidden"
+              >
+                  <span
+                    className="font-extrabold select-none"
+                    style={{
+                      // Scale the font size relative to the screen/container size, keeping the '3vw' responsive part
+                      fontSize: "clamp(1.5rem, 5vw, 3.5rem)", 
+                      transform: "rotate(-25deg)",
+                      whiteSpace: "nowrap",
+                      opacity: 0.25,
+                      color: "white",
+                      textShadow: "0 0 2px rgba(0,0,0,0.8), 0 0 6px rgba(0,0,0,0.4)",
+                      WebkitTextStroke: "0.5px rgba(0,0,0,0.5)",
+                      mixBlendMode: "soft-light",
+                      maxWidth: "90%",
+                      position: 'absolute', // Allows centered positioning within the image's container
+                      top: '50%',
+                      left: '50%',
+                      transform: 'translate(-50%, -50%) rotate(-25deg)', // Center and rotate
+                      textAlign: 'center',
+                    }}
+                  >
+                    ImagineMyPet.com
+                  </span>
+              </div>
+              
+              {/* Close Button */}
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="absolute top-2 right-2 text-white bg-black/50 hover:bg-black/70 rounded-full p-2 transition-all"
+                aria-label="Close zoom view"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-8 h-8">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </section>
   );
