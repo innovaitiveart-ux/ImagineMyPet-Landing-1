@@ -568,47 +568,51 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
               className="relative max-w-7xl w-full h-full p-8" 
               onClick={(e) => e.stopPropagation()}
             >
-              <img
-                src={generatedPortrait}
-                alt="Generated Pet Portrait (Zoomed)"
-                className="max-w-full max-h-full object-contain mx-auto rounded-xl shadow-2xl"
-                style={{
-                  // Ensures the image takes the maximum space while respecting aspect ratio
-                  display: 'block',
-                  maxWidth: '100%',
-                  maxHeight: '100%',
-                  width: 'auto',
-                  height: 'auto',
-                }}
-              />
               
-              {/* Watermark in Modal */}
-              <div 
-                className="absolute inset-0 flex items-center justify-center pointer-events-none z-10 overflow-hidden"
-              >
-                  <span
-                    className="font-extrabold select-none"
-                    style={{
-                      // Scale the font size relative to the screen/container size, keeping the '3vw' responsive part
-                      fontSize: "clamp(1.5rem, 5vw, 3.5rem)", 
-                      transform: "rotate(-25deg)",
-                      whiteSpace: "nowrap",
-                      opacity: 0.25,
-                      color: "white",
-                      textShadow: "0 0 2px rgba(0,0,0,0.8), 0 0 6px rgba(0,0,0,0.4)",
-                      WebkitTextStroke: "0.5px rgba(0,0,0,0.5)",
-                      mixBlendMode: "soft-light",
-                      maxWidth: "90%",
-                      position: 'absolute', // Allows centered positioning within the image's container
-                      top: '50%',
-                      left: '50%',
-                      transform: 'translate(-50%, -50%) rotate(-25deg)', // Center and rotate
-                      textAlign: 'center',
-                    }}
-                  >
-                    ImagineMyPet.com
-                  </span>
-              </div>
+              {/* CORRECTED WRAPPER: Ensures watermark positions relative to the image bounds */}
+              <div className="relative w-full h-full flex items-center justify-center">
+                <img
+                  src={generatedPortrait}
+                  alt="Generated Pet Portrait (Zoomed)"
+                  // These styles ensure the image takes up only the necessary space within the flex container
+                  className="max-w-full max-h-full object-contain rounded-xl shadow-2xl" 
+                  style={{
+                    display: 'block',
+                    maxWidth: '100%',
+                    maxHeight: '100%',
+                    width: 'auto',
+                    height: 'auto',
+                  }}
+                />
+
+                {/* CORRECTED Watermark in Modal - Positioned relative to the image/wrapper */}
+                <div 
+                  className="absolute inset-0 flex items-center justify-center pointer-events-none z-10 overflow-hidden"
+                >
+                    <span
+                      className="font-extrabold select-none"
+                      style={{
+                        fontSize: "clamp(1.5rem, 5vw, 3.5rem)", 
+                        transform: "rotate(-25deg)",
+                        whiteSpace: "nowrap",
+                        opacity: 0.25,
+                        color: "white",
+                        textShadow: "0 0 2px rgba(0,0,0,0.8), 0 0 6px rgba(0,0,0,0.4)",
+                        WebkitTextStroke: "0.5px rgba(0,0,0,0.5)",
+                        mixBlendMode: "soft-light",
+                        maxWidth: "90%",
+                        position: 'absolute', 
+                        top: '50%',
+                        left: '50%',
+                        transform: 'translate(-50%, -50%) rotate(-25deg)', // Center and rotate
+                        textAlign: 'center',
+                      }}
+                    >
+                      ImagineMyPet.com
+                    </span>
+                </div>
+              </div> 
+              {/* END of CORRECTED WRAPPER */}
               
               {/* Close Button */}
               <button
