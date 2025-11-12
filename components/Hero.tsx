@@ -217,6 +217,37 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
     else handleGenerateClick();
   };
 
+  // NEW FUNCTION: Passes the generated portrait URL to the style-specific collection page
+  const openPrintProductsWithPortrait = () => {
+    if (!generatedPortrait) {
+      console.error("No portrait URL to link.");
+      return;
+    }
+
+    // This logic is copied from your existing button, but modified to use 'window.location.href'
+    const effectiveStyle = activeStyleId || selectedStyle;
+    
+    const styleLinks: Record<string, string> = {
+      royalty: "https://imaginemypet.com/collections/custom-royal-pet-portrait",
+      watercolor: "https://imaginemypet.com/collections/watercolor-1",
+      "stained-glass": "https://imaginemypet.com/collections/stained-glass",
+      "jedi-warrior": "https://imaginemypet.com/collections/jedi-warrior",
+      "ghibli-inspired": "https://imaginemypet.com/collections/whimsical-ghibli-inspired-portrait",
+    };
+
+    const styleKey = effectiveStyle.toLowerCase().replace(/ /g, "-");
+    const redirectBaseUrl = styleLinks[styleKey] || "https://imaginemypet.com/collections";
+    
+    // Create the final URL object
+    const finalUrl = new URL(redirectBaseUrl);
+    
+    // CRITICAL: Append the generated image as the 'img' query parameter
+    finalUrl.searchParams.append("img", generatedPortrait);
+
+    // Redirect the user in the CURRENT window so the URL parameter persists
+    window.location.href = finalUrl.href;
+  };
+  
   // ✅ Passes the generated portrait URL to the product page
   const openDigitalProductWithPortrait = () => {
     if (!generatedPortrait) {
@@ -391,21 +422,7 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
               {/* RIGHT: Print */}
               <div className="flex-1 text-center">
                 <button
-                  onClick={() => {
-                    const effectiveStyle = activeStyleId || selectedStyle;
-
-                    const styleLinks: Record<string, string> = {
-                      royalty: "https://imaginemypet.com/collections/custom-royal-pet-portrait",
-                      watercolor: "https://imaginemypet.com/collections/watercolor-1",
-                      "stained-glass": "https://imaginemypet.com/collections/stained-glass",
-                      "jedi-warrior": "https://imaginemypet.com/collections/jedi-warrior",
-                      "ghibli-inspired": "https://imaginemypet.com/collections/whimsical-ghibli-inspired-portrait",
-                    };
-
-                    const styleKey = effectiveStyle.toLowerCase().replace(/ /g, "-");
-                    const redirectUrl = styleLinks[styleKey] || "https://imaginemypet.com/collections";
-                    window.open(redirectUrl, "_blank");
-                  }}
+                  onClick={openPrintProductsWithPortrait}
                   className="w-full text-white font-bold py-4 px-8 rounded-lg text-lg
                     bg-gradient-to-r from-[#00c853] to-[#00bfa5]
                     shadow-[0_6px_15px_rgba(0,191,165,0.3)]
