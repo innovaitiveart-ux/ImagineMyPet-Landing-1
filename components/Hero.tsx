@@ -244,7 +244,7 @@ const Hero = forwardRef<HTMLDivElement>((_props, ref) => {
     // Create the final URL object
     const finalUrl = new URL(redirectBaseUrl);
     
-    // CRITICAL: Append the generated image as the 'img' query parameter
+    // CRITICAL: Append or whatever the generated image as the 'img' query parameter
     finalUrl.searchParams.append("img", generatedPortrait);
 
     // Redirect the user in the CURRENT window so the URL parameter persists
